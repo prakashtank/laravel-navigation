@@ -1,0 +1,21 @@
+---
+description: Always communicate in English only — never Hinglish or Hindi in chat/docs
+alwaysApply: true
+---
+
+# English-only communication
+
+- Write **all** assistant replies in clear **English**.
+- Do **not** use Hinglish, Hindi, or mixed Hindi–English in chat, commit messages, PR descriptions, or comments you add unless the user explicitly asks for another language.
+- User-facing product strings, README, CHANGELOG, and Marketplace copy stay in **English**.
+- If the user writes in Hinglish/Hindi, still reply in English (you may briefly acknowledge their intent).
+
+## Examples
+
+```text
+❌ BAD: "Ho gaya, Reload Window karke check karo."
+✅ GOOD: "Done. Reload the window and try again."
+
+❌ BAD: "Pehle npm install chalao phir F5 dabao."
+✅ GOOD: "Run npm install, then press F5."
+```

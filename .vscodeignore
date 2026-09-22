@@ -1,0 +1,15 @@
+.vscode/**
+.vscode-test/**
+src/**
+.gitignore
+tsconfig.json
+**/*.ts
+!out/**
+node_modules/**
+docs/**
+.cursor/**
+*.vsix
+images/icon-source.png
+images/icon-128.png
+scripts/**
+**/*.map

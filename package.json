@@ -1,0 +1,79 @@
+{
+  "name": "laravel-navigation",
+  "displayName": "Laravel Navigation",
+  "description": "Lightweight Ctrl+Hover preview and Ctrl+Click for Laravel: models, views, routes, config, env, controllers, relations, and more — no PHP process.",
+  "version": "1.1.2",
+  "publisher": "prakashtank",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1e293b",
+    "theme": "dark"
+  },
+  "author": {
+    "name": "Prakash Tank",
+    "email": "prakashtank106@gmail.com"
+  },
+  "homepage": "https://github.com/prakashtank/laravel-navigation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/prakashtank/laravel-navigation.git"
+  },
+  "bugs": {
+    "url": "https://github.com/prakashtank/laravel-navigation/issues",
+    "email": "prakashtank106@gmail.com"
+  },
+  "qna": "marketplace",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "laravel",
+    "php",
+    "blade",
+    "goto definition",
+    "navigation",
+    "hover",
+    "route",
+    "config",
+    "env",
+    "eloquent",
+    "lightweight"
+  ],
+  "activationEvents": [
+    "onLanguage:php",
+    "onLanguage:blade",
+    "onLanguage:laravel-blade"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "laravelNavigation.openFile",
+        "title": "Laravel Navigation: Open File"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "tsc --noEmit",
+    "package": "vsce package --allow-missing-repository",
+    "release:patch": "node scripts/release.cjs patch",
+    "release:minor": "node scripts/release.cjs minor",
+    "release:major": "node scripts/release.cjs major",
+    "release:dry": "node scripts/release.cjs patch --dry-run",
+    "publish:marketplace": "vsce publish --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.32.0",
+    "typescript": "^5.3.3"
+  }
+}
