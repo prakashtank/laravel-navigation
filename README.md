@@ -7,7 +7,7 @@ Work happens **only** when you hover, Ctrl+Click, or Find All References.
 
 | | |
 |---|---|
-| **Version** | 1.1.2 |
+| **Version** | 1.0.0 |
 | **Author** | Prakash Tank — [prakashtank106@gmail.com](mailto:prakashtank106@gmail.com) |
 | **Feedback** | Hover card footer opens mail (`laravel-navigation feedback`) |
 | **License** | MIT |
@@ -16,7 +16,7 @@ Work happens **only** when you hover, Ctrl+Click, or Find All References.
 
 ## Screenshots
 
-Hover preview card with brand (**laravel-navigation 1.1.2**) and a feedback link:
+Hover preview card with brand (**laravel-navigation 1.0.0**) and a feedback link:
 
 ![Env hover — value from .env](images/screenshot-hover-env.jpg)
 
@@ -90,9 +90,9 @@ npm run package
 Then **Extensions** → `⋯` → **Install from VSIX…**, or:
 
 ```bash
-cursor --install-extension laravel-navigation-1.1.2.vsix --force
+cursor --install-extension laravel-navigation-1.0.0.vsix --force
 # or
-code --install-extension laravel-navigation-1.1.2.vsix --force
+code --install-extension laravel-navigation-1.0.0.vsix --force
 ```
 
 ### From source (Extension Development Host)
@@ -130,7 +130,7 @@ Each successful resolve shows a hover card:
 |------|---------|
 | Top-left | Kind (Model, Env, Route, …), file link, relative path |
 | Top-left (env/config) | **Value:** live value from `.env` / config (and `env()` inside config) |
-| Footer | Brand: **laravel-navigation 1.1.2** |
+| Footer | Brand: **laravel-navigation 1.0.0** |
 | Body | Short code preview (capped); env shows `KEY=value` |
 | Bottom-right | Blue feedback button: **Prakash Tank — prakashtank106@gmail.com** |
 
@@ -330,7 +330,7 @@ If the machine still hangs, check other extensions (Extra Intellisense, SonarLin
 npm install
 npm run compile    # tsc → out/
 npm run watch      # optional
-npm run package    # → laravel-navigation-1.1.2.vsix
+npm run package    # → laravel-navigation-1.0.0.vsix
 ```
 
 Debug: **F5** (launch config in `.vscode/launch.json`).

@@ -70,13 +70,13 @@ npx vsce login prakashtank
 # first-time login (if needed)
 npx vsce login prakashtank
 
-# bugfix / small change  →  1.1.0 → 1.1.1
+# bugfix / small change  →  1.0.0 → 1.0.1
 npm run release:patch
 
-# new feature               →  1.1.0 → 1.2.0
+# new feature               →  1.0.0 → 1.1.0
 npm run release:minor
 
-# breaking change           →  1.1.0 → 2.0.0
+# breaking change           →  1.0.0 → 2.0.0
 npm run release:major
 
 # bump locally only; do not publish
@@ -91,7 +91,7 @@ What `scripts/release.cjs` does:
 
 **Manual publish** (no bump): set the version yourself, then run `npm run publish:marketplace`.
 
-**Note:** The hover card brand text follows the published version (for example `laravel-navigation 1.1.2`).
+**Note:** The hover card brand text follows the published version (for example `laravel-navigation 1.0.0`).
 
 After a few minutes, search in VS Code:
 
