@@ -11,5 +11,6 @@ docs/**
 *.vsix
 images/icon-source.png
 images/icon-128.png
+images/author.png
 scripts/**
 **/*.map

@@ -77,7 +77,7 @@ if (dryRun) {
 }
 
 console.log('Publishing to Visual Studio Marketplace…');
-execSync('npx vsce publish --allow-missing-repository', {
+execSync('npx vsce publish', {
   cwd: root,
   stdio: 'inherit',
   env: process.env,

@@ -5,7 +5,7 @@ import { readFilePreview, readPreviewAroundLine } from '../utils/preview';
 
 export const OPEN_FILE_COMMAND = 'laravelNavigation.openFile';
 /** Shown once in hover footer — change with package.json version */
-export const BRAND = 'laravel-navigation 1.0.0';
+export const BRAND = 'laravel-navigation 1.0.1';
 export const AUTHOR_NAME = 'Prakash Tank';
 export const AUTHOR_EMAIL = 'prakashtank106@gmail.com';
 export const FEEDBACK_MAILTO =

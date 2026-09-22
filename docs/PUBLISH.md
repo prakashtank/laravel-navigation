@@ -91,7 +91,9 @@ What `scripts/release.cjs` does:
 
 **Manual publish** (no bump): set the version yourself, then run `npm run publish:marketplace`.
 
-**Note:** The hover card brand text follows the published version (for example `laravel-navigation 1.0.0`).
+**Note:** The hover card brand text follows the published version (for example `laravel-navigation 1.0.1`).
+
+README screenshots must use **public** GitHub raw URLs (or another public host). A private repo will break Marketplace images.
 
 After a few minutes, search in VS Code:
 

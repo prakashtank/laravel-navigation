@@ -7,7 +7,7 @@ Work happens **only** when you hover, Ctrl+Click, or Find All References.
 
 | | |
 |---|---|
-| **Version** | 1.0.0 |
+| **Version** | 1.0.1 |
 | **Author** | Prakash Tank — [prakashtank106@gmail.com](mailto:prakashtank106@gmail.com) |
 | **Feedback** | Hover card footer opens mail (`laravel-navigation feedback`) |
 | **License** | MIT |
@@ -16,13 +16,13 @@ Work happens **only** when you hover, Ctrl+Click, or Find All References.
 
 ## Screenshots
 
-Hover preview card with brand (**laravel-navigation 1.0.0**) and a feedback link:
+Hover preview card with brand (**laravel-navigation 1.0.1**) and a feedback link:
 
-![Env hover — value from .env](images/screenshot-hover-env.jpg)
+![Env hover — value from .env](https://raw.githubusercontent.com/prakashtank/laravel-navigation/main/images/screenshot-hover-env.jpg)
 
-![Model hover — jump to app/Models](images/screenshot-hover-model.jpg)
+![Model hover — jump to app/Models](https://raw.githubusercontent.com/prakashtank/laravel-navigation/main/images/screenshot-hover-model.jpg)
 
-![Route hover — named route definition](images/screenshot-hover-route.jpg)
+![Route hover — named route definition](https://raw.githubusercontent.com/prakashtank/laravel-navigation/main/images/screenshot-hover-route.jpg)
 
 ---
 
@@ -41,7 +41,6 @@ Hover preview card with brand (**laravel-navigation 1.0.0**) and a feedback link
 11. [Project structure](#11-project-structure)
 12. [Troubleshooting](#12-troubleshooting)
 13. [Roadmap](#13-roadmap)
-14. [Marketplace listing](#marketplace-listing-vs-code-search--right-panel)
 
 ---
 
@@ -90,9 +89,9 @@ npm run package
 Then **Extensions** → `⋯` → **Install from VSIX…**, or:
 
 ```bash
-cursor --install-extension laravel-navigation-1.0.0.vsix --force
+cursor --install-extension laravel-navigation-1.0.1.vsix --force
 # or
-code --install-extension laravel-navigation-1.0.0.vsix --force
+code --install-extension laravel-navigation-1.0.1.vsix --force
 ```
 
 ### From source (Extension Development Host)
@@ -130,7 +129,7 @@ Each successful resolve shows a hover card:
 |------|---------|
 | Top-left | Kind (Model, Env, Route, …), file link, relative path |
 | Top-left (env/config) | **Value:** live value from `.env` / config (and `env()` inside config) |
-| Footer | Brand: **laravel-navigation 1.0.0** |
+| Footer | Brand: **laravel-navigation 1.0.1** |
 | Body | Short code preview (capped); env shows `KEY=value` |
 | Bottom-right | Blue feedback button: **Prakash Tank — prakashtank106@gmail.com** |
 
@@ -330,7 +329,7 @@ If the machine still hangs, check other extensions (Extra Intellisense, SonarLin
 npm install
 npm run compile    # tsc → out/
 npm run watch      # optional
-npm run package    # → laravel-navigation-1.0.0.vsix
+npm run package    # → laravel-navigation-1.0.1.vsix
 ```
 
 Debug: **F5** (launch config in `.vscode/launch.json`).
@@ -404,19 +403,3 @@ Possible later (still lightweight):
 - Livewire / Volt component jump
 - Policy method ↔ model ability mapping
 - Optional mask for secret env values in hover
-
----
-
-## Marketplace listing (VS Code search / right panel)
-
-| What you see in search / details | Where it comes from |
-|----------------------------------|---------------------|
-| Icon | `images/icon.png` + `package.json` → `"icon"` |
-| Title | `"displayName"` |
-| Short line under the title | `"description"` |
-| Publisher | `"publisher"` (Marketplace account ID) |
-| Full docs on the right | **`README.md`** |
-| Changelog tab | `CHANGELOG.md` |
-| License | `LICENSE` |
-
-Publish steps: see [`docs/PUBLISH.md`](docs/PUBLISH.md).

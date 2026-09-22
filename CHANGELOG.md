@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 — 2026-09-23
+
+- Marketplace README screenshots load from the package (no private GitHub rewrite)
+- Removed the internal publish-doc link from the public listing
+
 ## 1.0.0 — 2026-09-23
 
 First public Marketplace release.

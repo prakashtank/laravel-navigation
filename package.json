@@ -2,7 +2,7 @@
   "name": "laravel-navigation",
   "displayName": "Laravel Navigation",
   "description": "Lightweight Ctrl+Hover preview and Ctrl+Click for Laravel: models, views, routes, config, env, controllers, relations, and more — no PHP process.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "prakashtank",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -63,12 +63,12 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "tsc --noEmit",
-    "package": "vsce package --allow-missing-repository",
+    "package": "vsce package",
     "release:patch": "node scripts/release.cjs patch",
     "release:minor": "node scripts/release.cjs minor",
     "release:major": "node scripts/release.cjs major",
     "release:dry": "node scripts/release.cjs patch --dry-run",
-    "publish:marketplace": "vsce publish --allow-missing-repository"
+    "publish:marketplace": "vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
