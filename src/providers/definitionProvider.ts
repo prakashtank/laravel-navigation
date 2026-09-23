@@ -10,7 +10,10 @@ export class LaravelDefinitionProvider implements vscode.DefinitionProvider {
     token: vscode.CancellationToken
   ): vscode.Definition | undefined {
     const resolved = resolveAtPosition(document, position, token);
-    return resolved?.location;
+    if (!resolved) {
+      return undefined;
+    }
+    return resolved.locations ?? resolved.location;
   }
 }
 

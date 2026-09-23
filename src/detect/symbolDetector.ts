@@ -25,6 +25,16 @@ export type SymbolKind =
   | 'listener'
   | 'policy'
   | 'request'
+  | 'repository'
+  | 'contract'
+  | 'exception'
+  | 'command'
+  | 'notification'
+  | 'mail'
+  | 'provider'
+  | 'seeder'
+  | 'factory'
+  | 'migration'
   | 'localMethod'
   | 'instanceMethod'
   | 'relation';
@@ -45,7 +55,9 @@ export function detectSymbol(
   position: vscode.Position
 ): DetectedSymbol | undefined {
   const line = getCurrentLine(document, position);
-  const ctx = getLineContext(document, position, 1);
+  const routesFile = isRoutesDocument(document);
+  const ctx = getLineContext(document, position, routesFile ? 8 : 1);
+  const wide = getLineContext(document, position, 4);
   const stringLit = getStringLiteralAtPosition(document, position);
   const word = getWordAtPosition(document, position);
 
@@ -79,27 +91,73 @@ export function detectSymbol(
     return { kind: 'lang', value: stringLit };
   }
 
-  // --- Named route (route() / reverse routing) ---
-  if (stringLit !== undefined && isRouteContext(ctx, stringLit)) {
-    return { kind: 'route', value: stringLit };
-  }
-
-  // --- Middleware alias string ---
-  if (stringLit !== undefined && isMiddlewareStringContext(line, stringLit)) {
-    return { kind: 'middleware', value: stringLit };
-  }
-
-  // --- Controller@method string ---
+  // --- Controller@method string (before named routes) ---
   if (stringLit !== undefined && isControllerString(stringLit)) {
     const [ctrl, method] = stringLit.split('@');
     return { kind: 'controller', value: ctrl, member: method };
   }
 
-  // --- [Controller::class, 'method'] — cursor on method string ---
-  if (stringLit !== undefined && isControllerActionMethod(ctx, stringLit)) {
-    const ctrl = extractControllerFromActionArray(ctx);
-    if (ctrl) {
-      return { kind: 'controller', value: stripClassSuffix(ctrl), member: stringLit };
+  // --- [Controller::class, 'method'] / Route::controller() — cursor on method ---
+  if (stringLit !== undefined) {
+    const action = findControllerActionAtString(document, position, stringLit);
+    if (action) {
+      return {
+        kind: 'controller',
+        value: resolveUseImport(document, action.ctrl),
+        member: action.method,
+      };
+    }
+  }
+
+  // --- Named route (route() / reverse routing) ---
+  if (stringLit !== undefined && isRouteContext(ctx, stringLit)) {
+    return { kind: 'route', value: stringLit };
+  }
+
+  // --- Artisan command signature ---
+  if (stringLit !== undefined && isCommandStringContext(ctx, stringLit)) {
+    return { kind: 'command', value: stringLit };
+  }
+
+  // --- Schema::create('users') ---
+  if (stringLit !== undefined && isMigrationStringContext(line, stringLit)) {
+    return { kind: 'migration', value: stringLit };
+  }
+
+  // --- $this->authorize / Gate::allows / Gate::define / @can / ->can ---
+  if (stringLit !== undefined && isAuthorizeAbilityContext(wide, stringLit)) {
+    const model =
+      extractAuthorizeModelHint(wide) ??
+      guessPolicyModelFromController(document);
+    return { kind: 'policy', value: model ?? '_gate', member: stringLit };
+  }
+
+  // --- Middleware alias; cursor after ':' is the permission/ability ---
+  if (stringLit !== undefined && isMiddlewareStringContext(line, stringLit)) {
+    const ability = permissionAbilityAtCursor(document, position, stringLit);
+    if (ability) {
+      return { kind: 'policy', value: '_gate', member: ability };
+    }
+    return { kind: 'middleware', value: stringLit };
+  }
+
+  // --- Job::dispatch() / dispatch(new Job) — cursor on dispatch ---
+  if (word && isJobDispatchWord(word)) {
+    const job = extractDispatchedClass(wide);
+    if (job) {
+      return { kind: 'job', value: resolveUseImport(document, job) };
+    }
+  }
+
+  // --- Notification::send / Mail::to()->send — cursor on send/notify ---
+  if (word && isNotifyMailSendWord(word)) {
+    const notice = extractNewClassInNotifyContext(wide);
+    if (notice) {
+      return { kind: 'notification', value: resolveUseImport(document, notice) };
+    }
+    const mailable = extractNewClassInMailContext(wide);
+    if (mailable) {
+      return { kind: 'mail', value: resolveUseImport(document, mailable) };
     }
   }
 
@@ -139,10 +197,21 @@ export function detectSymbol(
     // Expand via use App\Services\MetaWebhookService;
     const clean = resolveUseImport(document, cleanShort);
 
-    // Controller class (+ optional method from same line array)
+    // Controller class (+ method from [Ctrl::class, 'index'] or next line)
     if (/Controller$/.test(short)) {
-      const member = extractMethodBesideController(ctx, short);
+      const member = extractMethodAfterController(document, position);
       return { kind: 'controller', value: clean, member };
+    }
+
+    // routes/web.php: [SomeAction::class, 'handle'] without *Controller suffix
+    if (routesFile) {
+      const routeMember = extractMethodAfterController(document, position);
+      if (
+        routeMember &&
+        new RegExp(`${escapeRegExp(short)}::class`).test(ctx)
+      ) {
+        return { kind: 'controller', value: clean, member: routeMember };
+      }
     }
 
     // Convention suffixes
@@ -151,6 +220,15 @@ export function detectSymbol(
     }
     if (/Job$/.test(short) || clean.includes('\\Jobs\\')) {
       return { kind: 'job', value: clean };
+    }
+    if (isJobDispatchContext(wide, short)) {
+      return { kind: 'job', value: clean };
+    }
+    if (isNotificationPayloadContext(wide, short)) {
+      return { kind: 'notification', value: clean };
+    }
+    if (isMailPayloadContext(wide, short)) {
+      return { kind: 'mail', value: clean };
     }
     if (/Listener$/.test(short) || clean.includes('\\Listeners\\')) {
       return { kind: 'listener', value: clean };
@@ -167,26 +245,75 @@ export function detectSymbol(
     if (/Trait$/.test(short) || isTraitUsage(ctx, short)) {
       return { kind: 'trait', value: clean };
     }
-    // Services / Actions / Repositories → class (not model)
+    if (/Repository$/.test(short) || clean.includes('\\Repositories\\')) {
+      return { kind: 'repository', value: clean };
+    }
     if (
-      /Service$|Repository$|Action$|DTO$|Dto$/.test(short) ||
+      /Interface$|Contract$/.test(short) ||
+      clean.includes('\\Contracts\\') ||
+      clean.includes('\\Interfaces\\')
+    ) {
+      return { kind: 'contract', value: clean };
+    }
+    if (/Exception$/.test(short) || clean.includes('\\Exceptions\\')) {
+      return { kind: 'exception', value: clean };
+    }
+    if (/Command$/.test(short) || clean.includes('\\Console\\Commands\\')) {
+      return { kind: 'command', value: clean };
+    }
+    if (/Notification$/.test(short) || clean.includes('\\Notifications\\')) {
+      return { kind: 'notification', value: clean };
+    }
+    if (/Mail$|Mailable$/.test(short) || clean.includes('\\Mail\\')) {
+      return { kind: 'mail', value: clean };
+    }
+    if (
+      /Provider$|ServiceProvider$/.test(short) ||
+      clean.includes('\\Providers\\')
+    ) {
+      return { kind: 'provider', value: clean };
+    }
+    if (/Seeder$/.test(short)) {
+      return { kind: 'seeder', value: clean };
+    }
+    if (/Factory$/.test(short) || isFactoryCall(line, short)) {
+      return { kind: 'factory', value: factoryOwner(line, clean, short) };
+    }
+    if (
+      /^Create\w+Table$/.test(short) ||
+      clean.includes('\\Migrations\\')
+    ) {
+      return { kind: 'migration', value: clean };
+    }
+    // Services / Actions / DTOs → class (not model)
+    if (
+      /Service$|Action$|DTO$|Dto$/.test(short) ||
       clean.includes('\\Services\\') ||
-      clean.includes('\\Repositories\\') ||
       clean.includes('\\Actions\\')
     ) {
       return { kind: 'class', value: clean };
     }
 
-    // Type-hint parameter: MetaWebhookService $webhooks → class
-    if (new RegExp(`\\b${escapeRegExp(short)}\\s+\\$`).test(line)) {
+    // Type-hint / return type / docblock: User $user, ): User, : ?User
+    if (isPhpTypePosition(line, short)) {
       if (clean.includes('\\Models\\') || isLikelyModelName(short)) {
         return { kind: 'model', value: clean };
       }
       return { kind: 'class', value: clean };
     }
 
-    // Model
+    // Model (imported FQCN, User::, new User, or Models\ on the line)
     if (isModelCandidate(clean, line)) {
+      return { kind: 'model', value: clean };
+    }
+
+    // Bare Post / User after a Models import, or in a controller
+    if (
+      isLikelyModelName(short) &&
+      (clean.includes('\\Models\\') ||
+        isControllerDocument(document) ||
+        fileMentionsModels(document))
+    ) {
       return { kind: 'model', value: clean };
     }
 
@@ -291,6 +418,164 @@ function isMiddlewareStringContext(line: string, name: string): boolean {
   ].some((p) => p.test(line));
 }
 
+function isCommandStringContext(ctx: string, name: string): boolean {
+  const e = escapeRegExp(name);
+  return [
+    new RegExp(`\\$this\\s*->\\s*call\\s*\\(\\s*['"]${e}['"]`),
+    new RegExp(`Artisan::call\\s*\\(\\s*['"]${e}['"]`),
+    new RegExp(`->command\\s*\\(\\s*['"]${e}['"]`),
+  ].some((p) => p.test(ctx));
+}
+
+function isMigrationStringContext(line: string, table: string): boolean {
+  const e = escapeRegExp(table);
+  return new RegExp(`Schema::(?:create|table)\\(\\s*['"]${e}['"]`).test(line);
+}
+
+function isAuthorizeAbilityContext(ctx: string, ability: string): boolean {
+  const e = escapeRegExp(ability);
+  return [
+    new RegExp(`\\bauthorize(?:ForUser)?\\s*\\(\\s*['"]${e}['"]`),
+    new RegExp(
+      `Gate::(?:allows|denies|authorize|check|any|none|inspect|define)\\s*\\(\\s*['"]${e}['"]`
+    ),
+    new RegExp(`@can(?:any)?\\s*\\(\\s*['"]${e}['"]`),
+    new RegExp(`->can(?:not)?\\s*\\(\\s*['"]${e}['"]`),
+    new RegExp(`\\bhasPermission(?:To)?\\s*\\(\\s*['"]${e}['"]`),
+  ].some((p) => p.test(ctx));
+}
+
+function extractAuthorizeModelHint(ctx: string): string | undefined {
+  const classRef = ctx.match(
+    /(?:authorize(?:ForUser)?|Gate::(?:allows|denies|authorize|check)|@can(?:any)?|->can(?:not)?|hasPermission(?:To)?)\s*\(\s*['"][^'"]+['"]\s*,\s*([A-Za-z_\\][A-Za-z0-9_\\]*)::class/
+  );
+  if (classRef) {
+    return classRef[1].replace(/^\\/, '');
+  }
+  const varRef = ctx.match(
+    /(?:authorize(?:ForUser)?|Gate::(?:allows|denies|authorize|check)|@can(?:any)?|->can(?:not)?|hasPermission(?:To)?)\s*\(\s*['"][^'"]+['"]\s*,\s*\$([A-Za-z_][A-Za-z0-9_]*)/
+  );
+  return varRef?.[1];
+}
+
+function guessPolicyModelFromController(
+  document: vscode.TextDocument
+): string | undefined {
+  const base =
+    document.uri.fsPath.replace(/\\/g, '/').split('/').pop()?.replace(/\.php$/i, '') ??
+    '';
+  if (!/Controller$/.test(base) || base === 'Controller') {
+    return undefined;
+  }
+  return base.replace(/Controller$/, '');
+}
+
+function permissionAbilityAtCursor(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  stringLit: string
+): string | undefined {
+  if (!/^(permission|can|role):/.test(stringLit)) {
+    return undefined;
+  }
+  const line = document.lineAt(position.line).text;
+  const start = line.indexOf(stringLit);
+  if (start < 0) {
+    return undefined;
+  }
+  const colonCol = start + stringLit.indexOf(':');
+  if (position.character <= colonCol) {
+    return undefined;
+  }
+  return stringLit.slice(stringLit.indexOf(':') + 1) || undefined;
+}
+
+function isJobDispatchWord(word: string): boolean {
+  return /^(dispatch|dispatchSync|dispatchNow|dispatchAfterResponse|dispatch_sync)$/.test(
+    word
+  );
+}
+
+function isNotifyMailSendWord(word: string): boolean {
+  return /^(send|sendNow|notify|notifyNow|queue|later)$/.test(word);
+}
+
+function extractDispatchedClass(ctx: string): string | undefined {
+  const staticJob = ctx.match(
+    /\\?([A-Z][A-Za-z0-9_\\]*)\s*::\s*(?:dispatch|dispatchSync|dispatchAfterResponse)\s*\(/
+  );
+  if (staticJob) {
+    return staticJob[1];
+  }
+  const helper = ctx.match(
+    /(?:\bdispatch(?:_sync)?|Bus::dispatch(?:Now|Sync)?)\s*\(\s*new\s+\\?([A-Z][A-Za-z0-9_\\]*)/
+  );
+  return helper?.[1];
+}
+
+function extractNewClassInNotifyContext(ctx: string): string | undefined {
+  if (!/Notification::|(?:->|\s)notify(?:Now)?\s*\(/.test(ctx)) {
+    return undefined;
+  }
+  return firstNewClass(ctx);
+}
+
+function extractNewClassInMailContext(ctx: string): string | undefined {
+  if (!/Mail::/.test(ctx)) {
+    return undefined;
+  }
+  return firstNewClass(ctx);
+}
+
+function firstNewClass(ctx: string): string | undefined {
+  const m = ctx.match(/\bnew\s+\\?([A-Z][A-Za-z0-9_\\]*)/);
+  if (!m || /^(DateTime|Carbon|Collection|Request|Exception)/.test(m[1])) {
+    return undefined;
+  }
+  return m[1];
+}
+
+function isJobDispatchContext(ctx: string, short: string): boolean {
+  const e = escapeRegExp(short);
+  return (
+    new RegExp(
+      `${e}\\s*::\\s*(?:dispatch|dispatchSync|dispatchAfterResponse)\\s*\\(`
+    ).test(ctx) ||
+    new RegExp(
+      `(?:\\bdispatch(?:_sync)?|Bus::dispatch(?:Now|Sync)?)\\s*\\(\\s*new\\s+\\\\?${e}\\b`
+    ).test(ctx)
+  );
+}
+
+function isNotificationPayloadContext(ctx: string, short: string): boolean {
+  if (!/Notification::|(?:->|\s)notify(?:Now)?\s*\(/.test(ctx)) {
+    return false;
+  }
+  return new RegExp(`new\\s+\\\\?${escapeRegExp(short)}\\b`).test(ctx);
+}
+
+function isMailPayloadContext(ctx: string, short: string): boolean {
+  if (!/Mail::/.test(ctx)) {
+    return false;
+  }
+  return new RegExp(`new\\s+\\\\?${escapeRegExp(short)}\\b`).test(ctx);
+}
+
+function isFactoryCall(line: string, word: string): boolean {
+  if (word !== 'factory') {
+    return false;
+  }
+  return /[A-Z][A-Za-z0-9_]*\s*::\s*factory\s*\(/.test(line);
+}
+
+function factoryOwner(line: string, clean: string, short: string): string {
+  if (short !== 'factory') {
+    return clean;
+  }
+  const m = line.match(/([A-Z][A-Za-z0-9_]*)\s*::\s*factory\s*\(/);
+  return m?.[1] ?? clean;
+}
+
 function isLocalMethodCall(line: string, method: string): boolean {
   const e = escapeRegExp(method);
   return [
@@ -321,7 +606,7 @@ function inferVariableType(
   varName: string
 ): string | undefined {
   const e = escapeRegExp(varName);
-  const start = Math.max(0, position.line - 120);
+  const start = Math.max(0, position.line - 200);
   const chunk: string[] = [];
   for (let i = start; i <= position.line; i++) {
     chunk.push(document.lineAt(i).text);
@@ -423,25 +708,122 @@ function isControllerString(value: string): boolean {
   return /Controllers?\\/.test(value) && /Controller(@\w+)?$/.test(value);
 }
 
-function isControllerActionMethod(ctx: string, method: string): boolean {
-  // [SomethingController::class, 'method']
-  const e = escapeRegExp(method);
-  return new RegExp(
-    `Controller::class\\s*,\\s*['"]${e}['"]`
-  ).test(ctx);
+function isRoutesDocument(document: vscode.TextDocument): boolean {
+  return /\/routes\//.test(document.uri.fsPath.replace(/\\/g, '/'));
 }
 
-function extractControllerFromActionArray(ctx: string): string | undefined {
-  const m = ctx.match(/([A-Za-z0-9_\\]+Controller)::class\s*,\s*['"][^'"]+['"]/);
-  return m?.[1];
-}
-
-function extractMethodBesideController(ctx: string, ctrlShort: string): string | undefined {
-  const e = escapeRegExp(ctrlShort);
-  const m = ctx.match(
-    new RegExp(`${e}(?:::class)?\\s*,\\s*['"](\\w+)['"]`)
+/**
+ * Cursor is on the action string: [Ctrl::class, 'index'] or Route::get(..., 'index')
+ * inside Route::controller(Ctrl::class). Looks only at text *before* the string
+ * so ->name('index') on the same line is not stolen.
+ */
+function findControllerActionAtString(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  method: string
+): { ctrl: string; method: string } | undefined {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(method)) {
+    return undefined;
+  }
+  const before = textBeforeStringLiteral(document, position);
+  const arrayCtrl = before.match(
+    /\\?([A-Za-z_][A-Za-z0-9_\\]*)::class\s*,\s*$/
   );
+  if (arrayCtrl) {
+    return { ctrl: stripClassSuffix(arrayCtrl[1]), method };
+  }
+
+  if (!isRoutesDocument(document) || !isRouteHttpCallBefore(before)) {
+    return undefined;
+  }
+  const grouped = findRouteControllerGroup(document, position);
+  if (grouped) {
+    return { ctrl: grouped, method };
+  }
+  return undefined;
+}
+
+function textBeforeStringLiteral(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): string {
+  const line = document.lineAt(position.line).text;
+  const col = position.character;
+  let start = col;
+  for (let i = col; i >= 0; i--) {
+    if (
+      (line[i] === "'" || line[i] === '"') &&
+      (i === 0 || line[i - 1] !== '\\')
+    ) {
+      start = i;
+      break;
+    }
+  }
+  const lookback = Math.max(0, position.line - 12);
+  const prev: string[] = [];
+  for (let i = lookback; i < position.line; i++) {
+    prev.push(document.lineAt(i).text);
+  }
+  return `${prev.join('\n')}\n${line.slice(0, start)}`;
+}
+
+function isRouteHttpCallBefore(before: string): boolean {
+  const last = before.split('\n').pop() ?? before;
+  return /(?:Route::|->)(?:get|post|put|patch|delete|options|any|match)\s*\(\s*(?:['"][^'"]*['"]|[^,()\n]+)\s*,\s*$/.test(
+    last
+  );
+}
+
+function findRouteControllerGroup(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): string | undefined {
+  const start = Math.max(0, position.line - 50);
+  for (let i = position.line; i >= start; i--) {
+    const m = document
+      .lineAt(i)
+      .text.match(
+        /Route::controller\(\s*\\?([A-Za-z_][A-Za-z0-9_\\]*)::class/
+      );
+    if (m) {
+      return stripClassSuffix(m[1]);
+    }
+  }
+  return undefined;
+}
+
+/** Method string after UserController::class on this or the next few lines. */
+function extractMethodAfterController(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): string | undefined {
+  const line = document.lineAt(position.line).text;
+  let end = position.character;
+  while (end < line.length && /[A-Za-z0-9_\\]/.test(line[end])) {
+    end++;
+  }
+  const after: string[] = [line.slice(end)];
+  const last = Math.min(document.lineCount - 1, position.line + 6);
+  for (let i = position.line + 1; i <= last; i++) {
+    after.push(document.lineAt(i).text);
+  }
+  const text = after.join('\n');
+  const m = text.match(/^\s*::class\s*,\s*['"](\w+)['"]/);
   return m?.[1];
+}
+
+function fileMentionsModels(document: vscode.TextDocument): boolean {
+  const max = Math.min(document.lineCount, 80);
+  for (let i = 0; i < max; i++) {
+    const t = document.lineAt(i).text;
+    if (/\\Models\\/.test(t) || /namespace\s+[A-Za-z0-9_\\]*Models\b/.test(t)) {
+      return true;
+    }
+    if (/^\s*(class|interface|trait|enum)\s+/.test(t)) {
+      break;
+    }
+  }
+  return false;
 }
 
 function isTraitUsage(ctx: string, short: string): boolean {
@@ -450,6 +832,23 @@ function isTraitUsage(ctx: string, short: string): boolean {
     new RegExp(`\\buse\\s+${e}\\b`).test(ctx) ||
     new RegExp(`\\btrait\\s+${e}\\b`).test(ctx)
   );
+}
+
+function isPhpTypePosition(line: string, short: string): boolean {
+  const e = escapeRegExp(short);
+  return [
+    new RegExp(`\\b${e}\\s+\\$`),
+    new RegExp(`\\)\\s*:\\s*\\??${e}\\b`),
+    new RegExp(`:\\s*\\??${e}\\b`),
+    new RegExp(`\\b${e}\\s*[|&]`),
+    new RegExp(`[|&]\\s*\\??${e}\\b`),
+    new RegExp(`@(?:var|param|return|property(?:-read|-write)?)\\s+\\??(?:\\\\[A-Za-z0-9_\\\\]*\\\\)?${e}\\b`),
+  ].some((p) => p.test(line));
+}
+
+function isControllerDocument(document: vscode.TextDocument): boolean {
+  const fsPath = document.uri.fsPath.replace(/\\/g, '/');
+  return /\/Http\/Controllers\//.test(fsPath) || /Controller\.php$/i.test(fsPath);
 }
 
 function isModelCandidate(word: string, line: string): boolean {
@@ -468,7 +867,11 @@ function isModelCandidate(word: string, line: string): boolean {
     return true;
   }
   if (new RegExp(`\\b${escapeRegExp(short)}\\s*::`).test(line)) {
-    return true;
+    return (
+      isLikelyModelName(short) ||
+      word.includes('Models\\') ||
+      /\\Models\\/.test(line)
+    );
   }
   if (new RegExp(`\\bnew\\s+${escapeRegExp(short)}\\b`).test(line)) {
     return isLikelyModelName(short);
@@ -477,10 +880,17 @@ function isModelCandidate(word: string, line: string): boolean {
 }
 
 function isLikelyModelName(short: string): boolean {
-  // Heuristic: plain entity names, not *Service etc.
+  // Heuristic: plain entity names, not *Service / facades
+  if (
+    /^(Route|Auth|Gate|Schema|Config|View|Mail|Notification|Event|Queue|Cache|DB|Log|Hash|Crypt|Storage|Session|Cookie|Redirect|Response|App|Artisan|Blade|Broadcast|Bus|File|Http|Lang|Password|Redis|URL|Validator|Vite|Str|Arr)$/.test(
+      short
+    )
+  ) {
+    return false;
+  }
   return (
     /^[A-Z][A-Za-z0-9]*$/.test(short) &&
-    !/Service$|Controller$|Repository$|Request$|Middleware$|Provider$|Job$|Listener$|Policy$|Action$/.test(
+    !/Service$|Controller$|Repository$|Request$|Middleware$|Provider$|Job$|Listener$|Policy$|Action$|Exception$|Notification$|Mail$|Mailable$|Interface$|Contract$|Command$|Seeder$|Factory$/.test(
       short
     )
   );

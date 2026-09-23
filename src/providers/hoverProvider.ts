@@ -5,7 +5,7 @@ import { readFilePreview, readPreviewAroundLine } from '../utils/preview';
 
 export const OPEN_FILE_COMMAND = 'laravelNavigation.openFile';
 /** Shown once in hover footer — change with package.json version */
-export const BRAND = 'laravel-navigation 1.0.1';
+export const BRAND = 'laravel-navigation 1.1.0';
 export const AUTHOR_NAME = 'Prakash Tank';
 export const AUTHOR_EMAIL = 'prakashtank106@gmail.com';
 export const FEEDBACK_MAILTO =
@@ -42,7 +42,7 @@ export class LaravelHoverProvider implements vscode.HoverProvider {
       return undefined;
     }
 
-    const { symbol, location, displayValue } = resolved;
+    const { symbol, location, displayValue, locations } = resolved;
     const filePath = location.uri.fsPath;
     const fileName = path.basename(filePath);
     const relative = vscode.workspace.asRelativePath(location.uri, false);
@@ -82,6 +82,17 @@ export class LaravelHoverProvider implements vscode.HoverProvider {
           ? `**Value:** \`${displayValue}\``
           : `**Value:** _not found_`
       );
+    }
+
+    if (locations && locations.length > 1) {
+      const extraNames = [
+        ...new Set(
+          locations.slice(1).map((l) => path.basename(l.uri.fsPath))
+        ),
+      ];
+      if (extraNames.length > 0) {
+        lines.push(`Also: ${extraNames.join(', ')}`);
+      }
     }
 
     // One code fence only — skip when target is the same file (avoids "duplicate" look)
@@ -215,6 +226,16 @@ function kindLabelFor(kind: string): string {
     listener: 'Listener',
     policy: 'Policy',
     request: 'Form Request',
+    repository: 'Repository',
+    contract: 'Contract',
+    exception: 'Exception',
+    command: 'Command',
+    notification: 'Notification',
+    mail: 'Mail',
+    provider: 'Provider',
+    seeder: 'Seeder',
+    factory: 'Factory',
+    migration: 'Migration',
     localMethod: 'Method',
     instanceMethod: 'Method',
     relation: 'Relation',

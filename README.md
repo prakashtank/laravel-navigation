@@ -7,7 +7,7 @@ Work happens **only** when you hover, Ctrl+Click, or Find All References.
 
 | | |
 |---|---|
-| **Version** | 1.0.1 |
+| **Version** | 1.1.0 |
 | **Author** | Prakash Tank — [prakashtank106@gmail.com](mailto:prakashtank106@gmail.com) |
 | **Feedback** | Hover card footer opens mail (`laravel-navigation feedback`) |
 | **License** | MIT |
@@ -16,7 +16,7 @@ Work happens **only** when you hover, Ctrl+Click, or Find All References.
 
 ## Screenshots
 
-Hover preview card with brand (**laravel-navigation 1.0.1**) and a feedback link:
+Hover preview card with brand (**laravel-navigation 1.1.0**) and a feedback link:
 
 ![Env hover — value from .env](https://raw.githubusercontent.com/prakashtank/laravel-navigation/main/images/screenshot-hover-env.jpg)
 
@@ -89,9 +89,9 @@ npm run package
 Then **Extensions** → `⋯` → **Install from VSIX…**, or:
 
 ```bash
-cursor --install-extension laravel-navigation-1.0.1.vsix --force
+cursor --install-extension laravel-navigation-1.1.0.vsix --force
 # or
-code --install-extension laravel-navigation-1.0.1.vsix --force
+code --install-extension laravel-navigation-1.1.0.vsix --force
 ```
 
 ### From source (Extension Development Host)
@@ -129,7 +129,7 @@ Each successful resolve shows a hover card:
 |------|---------|
 | Top-left | Kind (Model, Env, Route, …), file link, relative path |
 | Top-left (env/config) | **Value:** live value from `.env` / config (and `env()` inside config) |
-| Footer | Brand: **laravel-navigation 1.0.1** |
+| Footer | Brand: **laravel-navigation 1.1.0** |
 | Body | Short code preview (capped); env shows `KEY=value` |
 | Bottom-right | Blue feedback button: **Prakash Tank — prakashtank106@gmail.com** |
 
@@ -191,7 +191,8 @@ Click the **filename** in the card → opens the target in a new editor tab at t
 |-----------|--------|
 | `UserController` / FQCN | `app/Http/Controllers/.../UserController.php` |
 | `'UserController@index'` | controller + **method line** |
-| `[UserController::class, 'index']` | controller + **method line** |
+| `[UserController::class, 'index']` (also multi-line in `routes/web.php`) | controller + **method line** |
+| `Route::controller(UserController::class)` + `'index'` | controller + **method line** |
 
 ### 5.7 Classes, services, traits, Illuminate
 
@@ -206,11 +207,22 @@ Click the **filename** in the card → opens the target in a new editor tab at t
 | Kind | Example | Folder |
 |------|---------|--------|
 | Middleware | `Authenticate` or alias `auth` | `app/Http/Middleware` (+ Kernel / `bootstrap/app.php` aliases) |
-| Job | `SendEmailJob` | `app/Jobs` |
-| Event | `OrderShipped` | `app/Events` |
+| Permission | `permission:users.create` (cursor on `users.create`) | `Gate::define` or Spatie `Permission::create` |
+| Job | `SendEmailJob` / `SendEmailJob::dispatch()` / `dispatch(new …)` | `app/Jobs` |
+| Event | `OrderShipped` | `app/Events` (+ mapped listeners on Ctrl+Click) |
 | Listener | `SendShipmentNotification` | `app/Listeners` |
-| Policy | `PostPolicy` | `app/Policies` |
+| Policy | `PostPolicy` or `$this->authorize('update', $post)` / `Gate::allows` / `Gate::define` / `@can` | `app/Policies` at the **ability method**, or the `Gate::define` line |
 | Form Request | `StoreRuleRequest` | `app/Http/Requests` |
+| Repository | `UserRepository` / `new UserRepository()` | `app/Repositories` |
+| Contract | `UserRepositoryInterface` / `implements …` | `app/Contracts` or `app/Interfaces` |
+| Exception | `OrderNotFoundException` / `throw new …` | `app/Exceptions` |
+| Command | `SomeCommand` or `$this->call('mail:send')` | `app/Console/Commands` (by class or `$signature`) |
+| Notification | `OrderShippedNotification` / `Notification::send(..., new …)` / `->notify(new …)` | `app/Notifications` |
+| Mail | `WelcomeMail` / `Mail::to(...)->send(new WelcomeMail())` | `app/Mail` |
+| Provider | `AppServiceProvider` | `app/Providers` |
+| Seeder | `UserSeeder` | `database/seeders` |
+| Factory | `UserFactory` / `User::factory()` | `database/factories` |
+| Migration | `Schema::create('users')` / `CreateUsersTable` | `database/migrations` |
 
 ### 5.9 Methods on `$this` / typed variables
 
@@ -219,6 +231,7 @@ Click the **filename** in the card → opens the target in a new editor tab at t
 | `$this->filters()` | `function filters` in **same class** (or parent `extends`, 1 level) |
 | `self::foo()` / `static::bar()` | same |
 | `$request->keywordsList()` when `StoreRuleRequest $request` | method on that class |
+| `$userService->createUser()` (typed) | `UserService::createUser` plus **Repository / Model** calls inside that method |
 
 ### 5.10 Eloquent relations
 
@@ -329,7 +342,7 @@ If the machine still hangs, check other extensions (Extra Intellisense, SonarLin
 npm install
 npm run compile    # tsc → out/
 npm run watch      # optional
-npm run package    # → laravel-navigation-1.0.1.vsix
+npm run package    # → laravel-navigation-1.1.0.vsix
 ```
 
 Debug: **F5** (launch config in `.vscode/launch.json`).
@@ -366,7 +379,9 @@ extension/
 │   │   ├── classResolver.ts
 │   │   ├── localMethodResolver.ts
 │   │   ├── relationResolver.ts
-│   │   └── assetLangResolver.ts
+│   │   ├── assetLangResolver.ts
+│   │   ├── laravelExtrasResolver.ts
+│   │   └── callChainResolver.ts
 │   ├── laravel/
 │   │   ├── project.ts        # find artisan root
 │   │   ├── paths.ts

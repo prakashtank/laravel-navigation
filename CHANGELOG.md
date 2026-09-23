@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0 — 2026-09-23
+
+- Repository, contract/interface, exception, notification, mail, command, provider, seeder, factory, migration navigation
+- `$this->call('command:name')` / `Artisan::call` → console command
+- `Schema::create('users')` → migration file
+- `User::factory()` → factory class
+- `$this->authorize('update', $user)` / `Gate::allows` / `@can` → policy method
+- Middleware aliases with parameters (`permission:users.create`)
+- Event → listener extra definitions (EventServiceProvider + listener scan)
+- Nested `app/Models` resolve and model → class fallback
+- `routes/web.php`: hover + open on route controller class and action method (`[Ctrl::class, 'index']`, `Route::controller`)
+- Service method → repository / model extras (`$userService->createUser()`)
+- `Notification::send` / `Mail::to()->send` / `->notify(new …)`
+- `Gate::define` and `permission:users.create` ability strings
+- `SendEmailJob::dispatch()` / `dispatch(new SendEmailJob)`
+
 ## 1.0.1 — 2026-09-23
 
 - Marketplace README screenshots load from the package (no private GitHub rewrite)

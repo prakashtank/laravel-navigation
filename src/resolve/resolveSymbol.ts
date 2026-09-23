@@ -21,7 +21,19 @@ import {
   resolveByConvention,
   findMethodInApp,
   clearConventionCaches,
+  ConventionKind,
 } from '../resolvers/classResolver';
+import {
+  resolveCommandSignature,
+  resolveMigration,
+  resolveFactory,
+  resolvePolicyAbility,
+  resolveEventListeners,
+  resolveGateDefine,
+  resolveModelOrClass,
+  clearExtrasCaches,
+} from '../resolvers/laravelExtrasResolver';
+import { resolveCallChain } from '../resolvers/callChainResolver';
 import { clearPsr4Cache } from '../laravel/psr4';
 import { clearRouteIndexCache } from '../laravel/routeIndex';
 import { LruCache } from '../utils/cache';
@@ -29,6 +41,8 @@ import { LruCache } from '../utils/cache';
 export interface ResolveResult {
   symbol: DetectedSymbol;
   location: vscode.Location;
+  /** Extra locations (event → listeners) */
+  locations?: vscode.Location[];
   /** Display value for env()/config() hover */
   displayValue?: string;
   root: string;
@@ -89,9 +103,17 @@ export function resolveAtPosition(
     locationCache.set(cacheKey, location);
   }
 
+  const extras = collectExtras(root, symbol, location);
+
   const displayValue = resolveDisplayValue(root, symbol);
 
-  return { symbol, location, displayValue, root };
+  return {
+    symbol,
+    location,
+    locations: extras.length > 0 ? [location, ...extras] : undefined,
+    displayValue,
+    root,
+  };
 }
 
 function resolveDisplayValue(
@@ -157,25 +179,86 @@ function dispatch(
     case 'lang':
       return resolveLang(root, symbol.value);
     case 'controller':
-      return resolveController(root, symbol.value, symbol.member);
+      return (
+        resolveController(root, symbol.value, symbol.member) ??
+        resolveClass(root, symbol.value, symbol.member)
+      );
     case 'model':
-      return resolveModel(root, symbol.value);
+      return resolveModelOrClass(root, symbol.value);
     case 'route':
       return resolveRoute(root, symbol.value);
     case 'trait':
       return resolveTrait(root, symbol.value);
     case 'class':
       return resolveClass(root, symbol.value, symbol.member);
+    case 'command':
+      return (
+        resolveCommandSignature(root, symbol.value) ??
+        resolveByConvention(root, 'command', symbol.value)
+      );
+    case 'migration':
+      return resolveMigration(root, symbol.value);
+    case 'factory':
+      return resolveFactory(root, symbol.value);
+    case 'policy':
+      if (symbol.member) {
+        if (symbol.value !== '_gate') {
+          const policy =
+            resolvePolicyAbility(root, symbol.value, symbol.member) ??
+            resolveByConvention(root, 'policy', symbol.value);
+          if (policy) {
+            return policy;
+          }
+        }
+        return resolveGateDefine(root, symbol.member);
+      }
+      return resolveByConvention(root, 'policy', symbol.value);
     case 'middleware':
     case 'job':
     case 'event':
     case 'listener':
-    case 'policy':
     case 'request':
-      return resolveByConvention(root, symbol.kind, symbol.value);
+    case 'repository':
+    case 'contract':
+    case 'exception':
+    case 'notification':
+    case 'mail':
+    case 'provider':
+    case 'seeder':
+      return resolveByConvention(root, symbol.kind as ConventionKind, symbol.value);
     default:
       return undefined;
   }
+}
+
+function collectExtras(
+  root: string,
+  symbol: DetectedSymbol,
+  location: vscode.Location
+): vscode.Location[] {
+  if (symbol.kind === 'event') {
+    return resolveEventListeners(root, symbol.value).filter(
+      (l) => l.uri.fsPath !== location.uri.fsPath
+    );
+  }
+  if (symbol.kind === 'policy' && symbol.member) {
+    const gate = resolveGateDefine(root, symbol.member);
+    if (gate && gate.uri.fsPath !== location.uri.fsPath) {
+      return [gate];
+    }
+    return [];
+  }
+  if (
+    (symbol.kind === 'instanceMethod' || symbol.kind === 'localMethod') &&
+    symbol.member
+  ) {
+    return resolveCallChain(root, location.uri.fsPath, symbol.member).filter(
+      (l) =>
+        l.uri.fsPath !== location.uri.fsPath ||
+        l.range.start.line !== location.range.start.line
+    );
+  }
+  return [];
 }
 
 export function clearResolveCache(): void {
@@ -184,5 +267,6 @@ export function clearResolveCache(): void {
   clearPsr4Cache();
   clearRouteIndexCache();
   clearConventionCaches();
+  clearExtrasCaches();
   clearEnvCache();
 }

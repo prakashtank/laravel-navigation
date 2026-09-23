@@ -1,8 +1,8 @@
 {
   "name": "laravel-navigation",
   "displayName": "Laravel Navigation",
-  "description": "Lightweight Ctrl+Hover preview and Ctrl+Click for Laravel: models, views, routes, config, env, controllers, relations, and more — no PHP process.",
-  "version": "1.0.1",
+  "description": "Lightweight Ctrl+Hover preview and Ctrl+Click for Laravel: models, views, routes, config, env, controllers, repositories, policies, and more — no PHP process.",
+  "version": "1.1.0",
   "publisher": "prakashtank",
   "license": "MIT",
   "icon": "images/icon.png",

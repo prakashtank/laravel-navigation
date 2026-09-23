@@ -66,6 +66,8 @@ export function findMethodInApp(
   }
 
   const bases = [
+    path.join(root, 'app', 'Services'),
+    path.join(root, 'app', 'Repositories'),
     path.join(root, 'app', 'Models'),
     path.join(root, 'app'),
   ];
@@ -220,21 +222,39 @@ export function resolveTrait(root: string, name: string): vscode.Location | unde
   return found ? new vscode.Location(found, new vscode.Position(0, 0)) : undefined;
 }
 
+export type ConventionKind =
+  | 'middleware'
+  | 'job'
+  | 'event'
+  | 'listener'
+  | 'policy'
+  | 'request'
+  | 'repository'
+  | 'contract'
+  | 'exception'
+  | 'command'
+  | 'notification'
+  | 'mail'
+  | 'provider'
+  | 'seeder'
+  | 'factory';
+
 export function resolveByConvention(
   root: string,
-  kind: 'middleware' | 'job' | 'event' | 'listener' | 'policy' | 'request',
+  kind: ConventionKind,
   name: string
 ): vscode.Location | undefined {
-  // Middleware may be an alias string like 'auth'
+  // Middleware may be an alias string like 'auth' or 'permission:users.create'
   if (kind === 'middleware' && !name.includes('\\') && !/[A-Z]/.test(name[0] || '')) {
-    const aliased = resolveMiddlewareAlias(root, name);
+    const alias = name.split(':')[0];
+    const aliased = resolveMiddlewareAlias(root, alias);
     if (aliased) {
       return aliased;
     }
   }
 
   const short = name.includes('\\') ? name.split('\\').pop()! : name;
-  const folders: Record<typeof kind, string[]> = {
+  const folders: Record<ConventionKind, string[]> = {
     middleware: [
       path.join(root, 'app', 'Http', 'Middleware'),
       path.join(root, 'app', 'Middleware'),
@@ -247,6 +267,24 @@ export function resolveByConvention(
       path.join(root, 'app', 'Http', 'Requests'),
       path.join(root, 'app', 'Requests'),
     ],
+    repository: [
+      path.join(root, 'app', 'Repositories'),
+      path.join(root, 'app', 'Repository'),
+    ],
+    contract: [
+      path.join(root, 'app', 'Contracts'),
+      path.join(root, 'app', 'Interfaces'),
+    ],
+    exception: [path.join(root, 'app', 'Exceptions')],
+    command: [path.join(root, 'app', 'Console', 'Commands')],
+    notification: [path.join(root, 'app', 'Notifications')],
+    mail: [path.join(root, 'app', 'Mail'), path.join(root, 'app', 'Mails')],
+    provider: [path.join(root, 'app', 'Providers')],
+    seeder: [
+      path.join(root, 'database', 'seeders'),
+      path.join(root, 'database', 'seeds'),
+    ],
+    factory: [path.join(root, 'database', 'factories')],
   };
 
   const candidates = [
